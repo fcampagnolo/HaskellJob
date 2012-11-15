@@ -1,0 +1,9 @@
+HS_IMPLEMENTATIONS=<?xml version\="1.0" encoding\="UTF-8"?>\n<hsImpls>\n  <hsImpl name\="GHC 7.4.1" binDir\="/usr/bin" version\="7.4.1" type\="GHC"/>\n</hsImpls>\n
+SELECTED_HS_IMPLEMENTATION=GHC 7.4.1
+cabalImplementations/1/executable=/usr/bin/cabal
+cabalImplementations/1/installVersion=0.14.0
+cabalImplementations/1/libraryVersion=1.14.0
+cabalImplementations/1/name=cabal-0.14.0
+cabalImplementations/defaultImpl=cabal-0.14.0
+cabalImplementations/numImpls=1
+eclipse.preferences.version=1
