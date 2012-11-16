@@ -7,6 +7,8 @@
 module Main where
 
 import Text.Printf -- Oba, Haskell tem printf! :-)
+import Data.Char
+import GHC.Float
 
 type Point     = (Float,Float)
 type Color     = (Int,Int,Int)
@@ -50,13 +52,13 @@ svgCloudGen w h dataset =
 -- A implementacao atual eh apenas um teste que gera um circulo posicionado no meio da figura.
 -- TODO: Alterar essa funcao para usar os dados do dataset.
 svgBubbleGen:: Int -> Int -> [Int] -> [String]
-svgBubbleGen w h dataset = [svgCircle ((fromIntegral w/2, fromIntegral h/2), 10.0)]
+svgBubbleGen w h dataset = [svgCircle((fromIntegral w/2, fromIntegral h/2),  intToFloat x) | x<-dataset] 
 
 
 -- Gera string representando um circulo em SVG. A cor do circulo esta fixa. 
 -- TODO: Alterar esta funcao para mostrar um circulo de uma cor fornecida como parametro.
 svgCircle :: Circle -> String
-svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"rgb(255,0,0)\" />\n" x y r
+svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"%s\" />\n" x y r (setColor (floatToInt r))  
 
 
 -- Configura o viewBox da imagem e coloca retangulo branco no fundo
@@ -65,3 +67,23 @@ svgViewBox w h =
         printf  "<svg width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\"" w h w h ++ 
                 " version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n" ++
         printf "<rect x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" style=\"fill:white;\"/>\n" w h
+
+-- Gera o RGB        
+setColor :: Int -> String
+setColor nro = printf "rgb(%d,%d,%d)"  (setNroColor (10+nro)::Int) (setNroColor (1+nro)::Int) (setNroColor (1+nro)::Int)
+
+--setColor nro = "rgb(" ++ [intToDigit(setNroColor nro+1)] ++ ","++ 
+--                     [intToDigit(setNroColor nro+100)] ++","++
+--                     [intToDigit(setNroColor nro+10000)] ++")"
+
+-- Gera nro para as cores
+setNroColor :: Int -> Int
+setNroColor nro = mod (nro * 1234) 255
+
+--Arredonda um nro float para inteiro
+floatToInt :: Float -> Int
+floatToInt nro = round nro
+
+--Converte um nro Int para float
+intToFloat :: Int -> Float
+intToFloat nro =fromInteger(toInteger nro)
