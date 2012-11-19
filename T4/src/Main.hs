@@ -8,7 +8,8 @@ module Main where
 
 import Text.Printf -- Oba, Haskell tem printf! :-)
 import Data.Char
-import GHC.Float
+import Data.List
+--import GHC.Float
 
 type Point     = (Float,Float)
 type Color     = (Int,Int,Int)
@@ -52,7 +53,7 @@ svgCloudGen w h dataset =
 -- A implementacao atual eh apenas um teste que gera um circulo posicionado no meio da figura.
 -- TODO: Alterar essa funcao para usar os dados do dataset.
 svgBubbleGen:: Int -> Int -> [Int] -> [String]
-svgBubbleGen w h dataset = [svgCircle((fromIntegral w/2, fromIntegral h/2),  intToFloat x) | x<-dataset] 
+svgBubbleGen w h dataset = [svgCircle((fromIntegral w/2, fromIntegral h/2),  x) | x<-reverse(sort(setRaio h dataset))] 
 
 
 -- Gera string representando um circulo em SVG. A cor do circulo esta fixa. 
@@ -87,3 +88,18 @@ floatToInt nro = round nro
 --Converte um nro Int para float
 intToFloat :: Int -> Float
 intToFloat nro =fromInteger(toInteger nro)
+
+--gera raio de acordo com o tamanho maximo da imagem
+setRaio :: Int -> [Int] -> [Float]
+setRaio h list = [ intToFloat(x) * fatorRaio h list 1.0 | x<-list ]
+ 
+--calcula raio enquando area do plano < soma das áreas dos 'circulos' estão como retangulos para n coencidirem 
+fatorRaio :: Int->[Int]->Float->Float
+fatorRaio h list fator
+        | intToFloat(h*h) < (somaArea list fator) = fatorRaio h list (0.90*fator) 
+        | otherwise =fator
+        
+somaArea:: [Int]->Float->Float
+somaArea list fator =sum( [ (intToFloat(x+x)*fator)*(intToFloat(x+x)*fator) | x<-list ] )
+
+
