@@ -7,8 +7,16 @@
 module Main where
 
 import Text.Printf -- Oba, Haskell tem printf! :-)
-import Data.Char
-import GHC.Float
+import Data.List
+import System.Random
+import System.IO.Unsafe
+
+--Função desenvolvida por alunos SI (não foi somente eu)
+randomGen2 :: IO Int
+randomGen2 = randomRIO (0,255::Int)  
+--Função desenvolvida por alunos SI (não foi somente eu)
+ioIntToInt :: IO Int->Int
+ioIntToInt nro= unsafePerformIO nro
 
 type Point     = (Float,Float)
 type Color     = (Int,Int,Int)
@@ -52,13 +60,34 @@ svgCloudGen w h dataset =
 -- A implementacao atual eh apenas um teste que gera um circulo posicionado no meio da figura.
 -- TODO: Alterar essa funcao para usar os dados do dataset.
 svgBubbleGen:: Int -> Int -> [Int] -> [String]
-svgBubbleGen w h dataset = [svgCircle((fromIntegral w/2, fromIntegral h/2),  intToFloat x) | x<-dataset] 
+svgBubbleGen w h dataset = [svgCircle((fst (fst x), snd(fst x)), snd x) | x<-geraPontos 0 10 (reverse(sort(setRaio h dataset))) [] ]
 
+geraPontos :: Float->Float->[Float]->[Circle]->[Circle]
+geraPontos _ _ [] listaPnts = listaPnts
+geraPontos t a dataset [] = geraPontos (0.3+t) (a) (tail dataset) ([((180+1*t*cos t,  180+1*t*sin t), head dataset)]) 
+geraPontos t a dataset listaPnts =
+        let x = 180+10*t*cos t
+            y = 180+10*t*sin t
+            raio = head dataset
+        in if verificaVerdadeiro(verificaColisao listaPnts ((x,  y), raio) ) == True then geraPontos (0.01+t) a (dataset) (listaPnts) 
+                else geraPontos (t) (a) (tail dataset) (listaPnts++[((x,  y), raio)]) 
+
+verificaVerdadeiro :: [Bool]->Bool
+verificaVerdadeiro [] = False
+verificaVerdadeiro list = head list || verificaVerdadeiro (tail list)
+
+--verifica se há colisão entre uma lista de circulos e um novo circulo
+verificaColisao :: [(Circle)]->(Circle)->[Bool] 
+verificaColisao pntOk newPnt = [ if distancia2Pontos x y (fst (fst newPnt)) (snd(fst newPnt)) >= r + snd newPnt then False 
+                                 else True | ((x,y),r)<-pntOk]
+-- calculo da distancia entre dois pontos
+distancia2Pontos :: Float->Float->Float->Float->Float
+distancia2Pontos x0 y0 x1 y1= sqrt((x1-x0)^2 + (y1-y0)^2)
 
 -- Gera string representando um circulo em SVG. A cor do circulo esta fixa. 
 -- TODO: Alterar esta funcao para mostrar um circulo de uma cor fornecida como parametro.
 svgCircle :: Circle -> String
-svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"%s\" />\n" x y r (setColor (floatToInt r))  
+svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"%s\" />\n" x y r (setColor(floatToInt r))  
 
 
 -- Configura o viewBox da imagem e coloca retangulo branco no fundo
@@ -69,16 +98,8 @@ svgViewBox w h =
         printf "<rect x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" style=\"fill:white;\"/>\n" w h
 
 -- Gera o RGB        
-setColor :: Int -> String
-setColor nro = printf "rgb(%d,%d,%d)"  (setNroColor (10+nro)::Int) (setNroColor (1+nro)::Int) (setNroColor (1+nro)::Int)
-
---setColor nro = "rgb(" ++ [intToDigit(setNroColor nro+1)] ++ ","++ 
---                     [intToDigit(setNroColor nro+100)] ++","++
---                     [intToDigit(setNroColor nro+10000)] ++")"
-
--- Gera nro para as cores
-setNroColor :: Int -> Int
-setNroColor nro = mod (nro * 1234) 255
+setColor :: Int->String
+setColor _ = printf "rgb(%d,%d,%d)"  (ioIntToInt randomGen2) (ioIntToInt randomGen2) (ioIntToInt randomGen2) 
 
 --Arredonda um nro float para inteiro
 floatToInt :: Float -> Int
@@ -87,3 +108,17 @@ floatToInt nro = round nro
 --Converte um nro Int para float
 intToFloat :: Int -> Float
 intToFloat nro =fromInteger(toInteger nro)
+
+--gera raio de acordo com o tamanho maximo da imagem
+setRaio :: Int -> [Int] -> [Float]
+setRaio h list = [ intToFloat(x) * fatorRaio h list 1.0 | x<-list ]
+ 
+--calcula raio enquando area do plano < soma das áreas dos 'circulos' estão como retangulos para n coencidirem 
+fatorRaio :: Int->[Int]->Float->Float
+fatorRaio h list fator
+        | intToFloat(h*h)*0.5 <= (somaArea list fator) = fatorRaio h list (0.90*fator) 
+        | otherwise =fator
+
+-- somas as áreas dos circulos
+somaArea:: [Int]->Float->Float
+somaArea list fator =sum( [ (intToFloat(x+x)*fator)*(intToFloat(x+x)*fator) | x<-list ] )

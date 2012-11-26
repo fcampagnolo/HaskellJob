@@ -7,9 +7,7 @@
 module Main where
 
 import Text.Printf -- Oba, Haskell tem printf! :-)
---import Data.Char
 import Data.List
---import GHC.Float
 import System.Random
 import System.IO.Unsafe
 
@@ -62,54 +60,34 @@ svgCloudGen w h dataset =
 -- A implementacao atual eh apenas um teste que gera um circulo posicionado no meio da figura.
 -- TODO: Alterar essa funcao para usar os dados do dataset.
 svgBubbleGen:: Int -> Int -> [Int] -> [String]
---svgBubbleGen w h dataset = [svgCircle((x, x),  x) | x<-reverse(sort(setRaio h dataset))] 
---svgBubbleGen w h dataset = [svgCircle((intToFloat w/2, intToFloat h/2), intToFloat x*0.25) | x<-reverse(sort(dataset))]
-svgBubbleGen w h dataset = [svgCircle((fst (fst x), snd(fst x)), snd x) | x<-geraPontos 1 (intToFloat w/2) (reverse(sort(setRaio h dataset))) ]
+svgBubbleGen w h dataset = [svgCircle((fst (fst x), snd(fst x)), snd x) | x<-geraPontos 0 10 (reverse(sort(setRaio h dataset))) [] ]
 
-testaColisao :: [(Circle)] -> [Float]
-testaColisao list = [ x | ((x,y),r)<-list]
+geraPontos :: Float->Float->[Float]->[Circle]->[Circle]
+geraPontos _ _ [] listaPnts = listaPnts
+geraPontos t a dataset [] = geraPontos (0.3+t) (a) (tail dataset) ([((180+1*t*cos t,  180+1*t*sin t), head dataset)]) 
+geraPontos t a dataset listaPnts =
+        let x = 180+10*t*cos t
+            y = 180+10*t*sin t
+            raio = head dataset
+        in if verificaVerdadeiro(verificaColisao listaPnts ((x,  y), raio) ) == True then geraPontos (0.01+t) a (dataset) (listaPnts) 
+                else geraPontos (t) (a) (tail dataset) (listaPnts++[((x,  y), raio)]) 
 
+verificaVerdadeiro :: [Bool]->Bool
+verificaVerdadeiro [] = False
+verificaVerdadeiro list = head list || verificaVerdadeiro (tail list)
 
-
---teste
-geraPontos :: Float->Float->[Float]->[(Circle)]
-geraPontos t y [] = []
-geraPontos t y dataset
---        | 180+(0.5*x)*cos x < 0 || 180+(0.5*x)*sin x < 0 = geraPontos (x+0.5) (x+0.5) (dataset)
---        | otherwise =((180+(0.5*x)*cos x,  180+(0.5*y)*sin y), head dataset) : geraPontos (x+(head dataset*0.01)) (y+(head dataset*0.01)) (tail dataset)
-          | otherwise =((180+10*t*cos t,  180+10*t*sin t), head dataset) : geraPontos (0.3+t) (0.3+t) (tail dataset)
-
-
+--verifica se há colisão entre uma lista de circulos e um novo circulo
 verificaColisao :: [(Circle)]->(Circle)->[Bool] 
 verificaColisao pntOk newPnt = [ if distancia2Pontos x y (fst (fst newPnt)) (snd(fst newPnt)) >= r + snd newPnt then False 
                                  else True | ((x,y),r)<-pntOk]
-
+-- calculo da distancia entre dois pontos
 distancia2Pontos :: Float->Float->Float->Float->Float
 distancia2Pontos x0 y0 x1 y1= sqrt((x1-x0)^2 + (y1-y0)^2)
-
-
-
-geraListaPontos :: Float->[Float]->[(Circle)]
-geraListaPontos fator dataset = [((180+10*t*cos t,  180+10*t*sin t), x) | (x,t)<-zip dataset (take (length dataset) [fator, 0.1+fator..]) ]
-
-contatenaPontos :: Float->[Float]->[(Circle)]->[(Circle)]
-contatenaPontos t dataset [] = contatenaPontos t (tail dataset) (take 1 (geraPontos t t dataset))
-contatenaPontos t dataset pntOk
-        | t == 1 = contatenaPontos t (tail dataset) (take 1 (geraPontos t t dataset))
-        | otherwise = contatenaPontos t (tail dataset) (pntOk++(take 1 (geraPontos t t dataset)))
-
-
-
---((10, 10), 10 ): geraPontos 10 10 [1..20]       
---geraPontos((x*1*(cos 1), y*1*(sin 1)), tail dataset)
 
 -- Gera string representando um circulo em SVG. A cor do circulo esta fixa. 
 -- TODO: Alterar esta funcao para mostrar um circulo de uma cor fornecida como parametro.
 svgCircle :: Circle -> String
-svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"%s\" />\n" x y r (setColor (floatToInt r))  
-
---x = a*t*(cos t)
---y = a*t*(sin t)
+svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"%s\" />\n" x y r (setColor(floatToInt r))  
 
 
 -- Configura o viewBox da imagem e coloca retangulo branco no fundo
@@ -120,17 +98,8 @@ svgViewBox w h =
         printf "<rect x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" style=\"fill:white;\"/>\n" w h
 
 -- Gera o RGB        
-setColor :: Int -> String
-setColor nro = printf "rgb(%d,%d,%d)"  (ioIntToInt randomGen2) (ioIntToInt randomGen2) (ioIntToInt randomGen2) 
---setColor nro = printf "rgb(%d,%d,%d)"  randonRIO(1,255::Int) randonRIO(1,255::Int) randonRIO(1,255::Int)
-
---setColor nro = "rgb(" ++ [intToDigit(setNroColor nro+1)] ++ ","++ 
---                     [intToDigit(setNroColor nro+100)] ++","++
---                     [intToDigit(setNroColor nro+10000)] ++")"
-
--- Gera nro para as cores
---setNroColor :: Int -> Int
---setNroColor nro = mod (nro * 1234) 255
+setColor :: Int->String
+setColor _ = printf "rgb(%d,%d,%d)"  (ioIntToInt randomGen2) (ioIntToInt randomGen2) (ioIntToInt randomGen2) 
 
 --Arredonda um nro float para inteiro
 floatToInt :: Float -> Int
@@ -147,12 +116,9 @@ setRaio h list = [ intToFloat(x) * fatorRaio h list 1.0 | x<-list ]
 --calcula raio enquando area do plano < soma das áreas dos 'circulos' estão como retangulos para n coencidirem 
 fatorRaio :: Int->[Int]->Float->Float
 fatorRaio h list fator
-        | intToFloat(h*h)*0.25 <= (somaArea list fator) = fatorRaio h list (0.90*fator) 
+        | intToFloat(h*h)*0.5 <= (somaArea list fator) = fatorRaio h list (0.90*fator) 
         | otherwise =fator
 
 -- somas as áreas dos circulos
 somaArea:: [Int]->Float->Float
 somaArea list fator =sum( [ (intToFloat(x+x)*fator)*(intToFloat(x+x)*fator) | x<-list ] )
-
-
-
