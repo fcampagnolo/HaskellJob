@@ -60,18 +60,20 @@ svgCloudGen w h dataset =
 -- A implementacao atual eh apenas um teste que gera um circulo posicionado no meio da figura.
 -- TODO: Alterar essa funcao para usar os dados do dataset.
 svgBubbleGen:: Int -> Int -> [Int] -> [String]
-svgBubbleGen w h dataset = [svgCircle((fst (fst x), snd(fst x)), snd x) | x<-geraPontos 0 10 (reverse(sort(setRaio h dataset))) [] ]
+svgBubbleGen w h dataset = [svgCircle((fst (fst x), snd(fst x)), snd x) | x<-geraPontos 0 0.05 (reverse(sort(setRaio h dataset))) [] ]
 
+--Função gera/Analisa os pontos
 geraPontos :: Float->Float->[Float]->[Circle]->[Circle]
 geraPontos _ _ [] listaPnts = listaPnts
-geraPontos t a dataset [] = geraPontos (0.3+t) (a) (tail dataset) ([((180+1*t*cos t,  180+1*t*sin t), head dataset)]) 
+geraPontos t a dataset [] = geraPontos (0.1+t) (a) (tail dataset) ([((180+1*t*cos t,  180+1*t*sin t), head dataset)]) 
 geraPontos t a dataset listaPnts =
-        let x = 180+10*t*cos t
-            y = 180+10*t*sin t
+        let x = 180+a*t*cos t
+            y = 180+a*t*sin t
             raio = head dataset
-        in if verificaVerdadeiro(verificaColisao listaPnts ((x,  y), raio) ) == True then geraPontos (0.01+t) a (dataset) (listaPnts) 
-                else geraPontos (t) (a) (tail dataset) (listaPnts++[((x,  y), raio)]) 
+        in if verificaVerdadeiro(verificaColisao listaPnts ((x,  y), raio) ) == True then geraPontos (0.5+t) a (dataset) (listaPnts) 
+                else geraPontos (0) (a) (tail dataset) (listaPnts++[((x,  y), raio)]) 
 
+--Função que verifica se há pontos que colidem na lista de comparações 
 verificaVerdadeiro :: [Bool]->Bool
 verificaVerdadeiro [] = False
 verificaVerdadeiro list = head list || verificaVerdadeiro (tail list)
@@ -111,12 +113,12 @@ intToFloat nro =fromInteger(toInteger nro)
 
 --gera raio de acordo com o tamanho maximo da imagem
 setRaio :: Int -> [Int] -> [Float]
-setRaio h list = [ intToFloat(x) * fatorRaio h list 1.0 | x<-list ]
+setRaio h list = [ intToFloat(x) * fatorRaio h list 1.0 + 2 | x<-list ]
  
 --calcula raio enquando area do plano < soma das áreas dos 'circulos' estão como retangulos para n coencidirem 
 fatorRaio :: Int->[Int]->Float->Float
 fatorRaio h list fator
-        | intToFloat(h*h)*0.5 <= (somaArea list fator) = fatorRaio h list (0.90*fator) 
+        | intToFloat(h*h)*0.6 <= (somaArea list fator) = fatorRaio h list (0.90*fator) 
         | otherwise =fator
 
 -- somas as áreas dos circulos

@@ -1,0 +1,126 @@
+{--
+        Esqueleto de programa para geração de bubble cloud em Haskell.
+        Mais informações em: http://www.inf.ufsm.br/~andrea/elc117-2012b
+--}
+
+
+module Main where
+
+import Text.Printf -- Oba, Haskell tem printf! :-)
+import Data.List
+import System.Random
+import System.IO.Unsafe
+
+--Função desenvolvida por alunos SI (não foi somente eu)
+randomGen2 :: IO Int
+randomGen2 = randomRIO (0,255::Int)  
+--Função desenvolvida por alunos SI (não foi somente eu)
+ioIntToInt :: IO Int->Int
+ioIntToInt nro= unsafePerformIO nro
+
+type Point     = (Float,Float)
+type Color     = (Int,Int,Int)
+type Circle    = (Point,Float)
+
+imageWidth :: Int
+imageWidth = 360
+
+imageHeight :: Int
+imageHeight = 360
+
+
+-- Funcao principal que faz leitura do dataset e gera arquivo SVG
+main :: IO ()
+main = do 
+        strcontent <- readFile infile
+        let pairs = map (span (/= ' ')) (lines strcontent)
+            freqs = readInts (map snd pairs)
+        writeFile outfile (svgCloudGen imageWidth imageHeight freqs)
+        putStrLn "Ok!"
+        where 
+                infile = "dataset.txt"
+                outfile = "tagcloud.svg"
+
+
+-- Transforma lista de strings em lista de inteiros
+readInts :: [String] -> [Int]
+readInts ss = map read ss
+
+
+-- Gera o documento SVG da tag cloud, concatenando cabecalho, conteudo e rodape
+svgCloudGen :: Int -> Int -> [Int] -> String
+svgCloudGen w h dataset = 
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" ++ 
+        "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n" ++
+        (svgViewBox w h) ++
+        (concat (svgBubbleGen w h dataset)) ++ "</svg>\n"
+
+
+-- Esta funcao deve gerar a lista de circulos em formato SVG.
+-- A implementacao atual eh apenas um teste que gera um circulo posicionado no meio da figura.
+-- TODO: Alterar essa funcao para usar os dados do dataset.
+svgBubbleGen:: Int -> Int -> [Int] -> [String]
+svgBubbleGen w h dataset = [svgCircle((fst (fst x), snd(fst x)), snd x) | x<-geraPontos 0 0.05 (reverse(sort(setRaio h dataset))) [] ]
+
+--Função gera/Analisa os pontos
+geraPontos :: Float->Float->[Float]->[Circle]->[Circle]
+geraPontos _ _ [] listaPnts = listaPnts
+geraPontos t a dataset [] = geraPontos (0.1+t) (a) (tail dataset) ([((180+1*t*cos t,  180+1*t*sin t), head dataset)]) 
+geraPontos t a dataset listaPnts =
+        let x = 180+a*t*cos t
+            y = 180+a*t*sin t
+            raio = head dataset
+        in if verificaVerdadeiro(verificaColisao listaPnts ((x,  y), raio) ) == True then geraPontos (0.5+t) a (dataset) (listaPnts) 
+                else geraPontos (0) (a) (tail dataset) (listaPnts++[((x,  y), raio)]) 
+
+--Função que verifica se há pontos que colidem na lista de comparações 
+verificaVerdadeiro :: [Bool]->Bool
+verificaVerdadeiro [] = False
+verificaVerdadeiro list = head list || verificaVerdadeiro (tail list)
+
+--verifica se há colisão entre uma lista de circulos e um novo circulo
+verificaColisao :: [(Circle)]->(Circle)->[Bool] 
+verificaColisao pntOk newPnt = [ if distancia2Pontos x y (fst (fst newPnt)) (snd(fst newPnt)) >= r + snd newPnt then False 
+                                 else True | ((x,y),r)<-pntOk]
+-- calculo da distancia entre dois pontos
+distancia2Pontos :: Float->Float->Float->Float->Float
+distancia2Pontos x0 y0 x1 y1= sqrt((x1-x0)^2 + (y1-y0)^2)
+
+-- Gera string representando um circulo em SVG. A cor do circulo esta fixa. 
+-- TODO: Alterar esta funcao para mostrar um circulo de uma cor fornecida como parametro.
+svgCircle :: Circle -> String
+svgCircle ((x,y),r) = printf "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" fill=\"%s\" />\n" x y r (setColor(floatToInt r))  
+
+
+-- Configura o viewBox da imagem e coloca retangulo branco no fundo
+svgViewBox :: Int -> Int -> String
+svgViewBox w h =
+        printf  "<svg width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\"" w h w h ++ 
+                " version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n" ++
+        printf "<rect x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" style=\"fill:white;\"/>\n" w h
+
+-- Gera o RGB        
+setColor :: Int->String
+setColor _ = printf "rgb(%d,%d,%d)"  (ioIntToInt randomGen2) (ioIntToInt randomGen2) (ioIntToInt randomGen2) 
+
+--Arredonda um nro float para inteiro
+floatToInt :: Float -> Int
+floatToInt nro = round nro
+
+--Converte um nro Int para float
+intToFloat :: Int -> Float
+intToFloat nro =fromInteger(toInteger nro)
+
+--gera raio de acordo com o tamanho maximo da imagem
+setRaio :: Int -> [Int] -> [Float]
+setRaio h list = [ intToFloat(x) * fatorRaio h list 1.0 + 4 | x<-list ]
+ 
+--calcula raio enquando area do plano < soma das áreas dos 'circulos' estão como retangulos para n coencidirem 
+fatorRaio :: Int->[Int]->Float->Float
+fatorRaio h list fator
+        | intToFloat(h*h)*0.4 <= (somaArea list fator) = fatorRaio h list (0.90*fator) 
+        | otherwise =fator
+
+-- somas as áreas dos circulos
+somaArea:: [Int]->Float->Float
+somaArea list fator =sum( [ (intToFloat(x+x)*fator)*(intToFloat(x+x)*fator) | x<-list ] )
